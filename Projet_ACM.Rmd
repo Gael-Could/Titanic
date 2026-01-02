@@ -1,0 +1,425 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## **PROJET  -  MASTER 1 (MQME)**
+----------------------------------------
+## **OBJECTIF PRINCIPAL :** Analyse de données Titanic 
+----------------------------------------
+## **ANNEE :** 2025-2026
+## **AUTEUR:** Perrin Kibiti
+--------------------------------------------
+
+## **1. Introduction**  
+Le Titanic coule lors de son premier voyage entre l'Angleterre et les États‑Unis dans la nuit du 14 au 15 avril 1912. Une grande partie des personnes à bord perdent la vie, tandis qu'une minorité seulement parvient à survivre. Dans ce travail, nous disposons d'informations sur les passagers à savoir leur classe de voyage (équipage, première, deuxième, troisième), leur sexe (homme ou femme), leur âge (enfant ou adulte) et le fait qu’ils soient survivants ou décédés. L'idée est de regarder comment ces caractéristiques sont liées à la survie, et de voir quels types de passagers ont le plus (ou le moins) de chances d’avoir survécu au naufrage. Pour se faire, nous allons procéder au traitement des données, puis à une analyse adaptée en tenant compte des données auxquelles nous avons affaire. 
+
+## **2. Pré‑traitement des données** 
+
+Objectif : comprendre la structure du fichier puis recoder les modalités des variables.
+
+```{r}
+# Chargement des packages
+library(dplyr)
+library(FactoMineR)
+library(factoextra)
+```
+
+## Importation des données
+
+```{r}
+# Import des données
+titanic <- read.csv("C:/Users/gpkib/Box/Gael Box/Université de Lille/Analyse de données I (6ECTS)/Projet AFCM/titanic.csv", header = TRUE, sep = ",")
+
+```
+
+```{r}
+# Aperçu
+str(titanic)
+head(titanic)
+```
+```{r}
+# Vérification des valeurs manquantes
+sum(is.na(titanic))
+```
+Aucune valeur manquante n'est identifiée dans cette base de données. 
+
+## Recodage des variables
+
+```{r}
+#Classe
+titanic$Classe <- factor(titanic$Classe)
+
+levels(titanic$Classe)[levels(titanic$Classe) == "0"] <- "équipage"
+levels(titanic$Classe)[levels(titanic$Classe) == "1"] <- "première classe"
+levels(titanic$Classe)[levels(titanic$Classe) == "2"] <- "seconde classe"
+levels(titanic$Classe)[levels(titanic$Classe) == "3"] <- "troisième classe"
+
+
+# Age
+titanic$Age <- factor(titanic$Age)
+
+levels(titanic$Age)[levels(titanic$Age) == "0"] <- "enfant"
+levels(titanic$Age)[levels(titanic$Age) == "1"] <- "adulte"
+
+# Sexe
+titanic$Sexe <- factor(titanic$Sexe)
+
+levels(titanic$Sexe)[levels(titanic$Sexe) == "0"] <- "femme"
+levels(titanic$Sexe)[levels(titanic$Sexe) == "1"] <- "homme"
+
+
+# Survie
+titanic$Survie <- factor(titanic$Survie)
+
+levels(titanic$Survie)[levels(titanic$Survie) == "0"] <- "décédé"
+levels(titanic$Survie)[levels(titanic$Survie) == "1"] <- "survivant"
+
+str(titanic)
+```
+## Analyse descriptive
+
+```{r}
+summary(titanic)
+```
+Sur les 2201 personnes recensées, la majorité sont des adultes (2092), des hommes (1731), et la plupart n'ont pas survecues (1490) pas au naufrage de titanic.
+
+## **3. Analyse factorielle**
+
+## Choix de la méthode factorielle
+
+Les quatre variables de notre base de données sont qualitatives (Classe, Age, Sexe, Survie). Nous avons donc plus de deux variables qualitatives, alors la méthode factorielle adaptée est une **analyse des correspondances multiples (ACM)**.
+
+## Application de l'ACM
+
+```{r}
+# Analyse des correspondances multiples
+res.mca <- MCA(titanic, graph = FALSE)
+
+# Résultats
+res.mca
+eig <- res.mca$eig
+eig
+```
+## Choix du nombre de composantes
+
+### Règle du coude
+
+```{r}
+fviz_eig(res.mca, addlabels = TRUE, ylim = c(0, 60))
+```
+
+Nous remarquons la formation d’un coude au niveau de la cinquième composante (11,9%), ce qui nous conduit au choix des 4 premiers axes pour la suite notre analyse d’après la règle de Coude.
+
+### Règle de Kaiser : Choix des composantes dont les valeurs propres sont supérieures à la moyenne
+
+Cette moyenne est calculée de la manière suivante : $1/p$, avec $p = 4$.
+
+```{r}
+# Moyenne des valeurs propres
+moyenne_vp <- 1/4
+moyenne_vp
+```
+```{r}
+eig
+```
+
+Nous constatons que la moyenne des valeurs propres est égale à $0.25$ et seulement les 3 premiers axes ont des valeurs propres supérieures à $0.25$. Selon la loi de Kaiser, nous n'allons considérer que les 3 axes. 
+
+### Seuil de variance expliquée 
+
+D’après le résultat, nous retenons 4 composantes comme suit :
+
+Composante 1 : 29,7% de variance de la variabilité du nuage des individus est expliqueé.
+
+Composante 2 : 20,3% de variance de la variabilité du nuage des individus est expliquée.
+
+Composante 3 : 16,7% de variance de la variabilité du nuage des individus est expliquée.
+
+Composante 4 : 11,9% de variance de la variabilité du nuage des individus est expliquée.
+
+Ainsi 80% (soit 29,7% + 20,3% + 16,7% + 11,9%) de la variance cumulée est expliquée par les
+quatre premières composantes lesquelles par conséquent expliquent quasiment la majorité de l’information engendrée par la base de données. Par conséquent d'après les 2 règles (Coude et le seuil de la variance expliquée), nous gardons 4 composantes pour la suite de notre analyse. 
+
+## **4. Interprétation des axes factoriels**
+
+## 4.1. Contributions des modalités aux axes
+
+```{r}
+var <- res.mca$var
+print(var$contrib, 2)  
+print(var$coord, 2)
+print(var$cos2, 2)
+```
+Dim 1 : Les modalités femme (29,75%) et survivant (20,68%) contribuent le plus à la création du premier axe tandis que première classe et équipage contribuent moyennement.  
+
+Dim 2 : Les modalités première classe (18,35%) contribue le plus à la création du deuxième axe.
+
+Dim 3 : La modalité seconde classe (7,40%) contribue le plus à la création du troisième axe.
+
+Dim 4 : Les modalités enfant (44,74%) et équipage sont celles qui contribuent le plus à la création du quatrième axe.
+
+## 4.2 Qualité de représentation des modalités
+
+Nous constatons que femme et homme ont une qualité meilleure de représentation sur l'axe 1, suivis de décédé et survivant. Cependant, les qualités de représentation ne sont pas bonnes sur les axes 2 et 3. Par contre, enfant, adulte et équipage sont moyennement représentées sur l'axe 4, comparativement aux autres. 
+
+## Visualisation sur le premier plan (1,2)
+
+```{r}
+fviz_mca_var(
+  res.mca, 
+  repel = TRUE
+)
+```
+
+On constate ce qui suit : 
+
+À gauche de l'axe 1, se trouvent les modalités équipage, homme et décédé, ce qui signifie que l'on observe davantage d'hommes de l'équipage décédés. Tandis qu'à droite, nous avons les modalités femme, survivant, première classe et seconde classe se situant dans le même secteur du plan, ce qui indique une plus forte présence de survivants issus de la première et de la seconde classe. Par conséquent, l'axe 1 oppose un profil **"femmes, passagers de première et deuxième classe, plutôt survivants"** à un profil **"hommes d’équipage, davantage décédés"**.
+
+En haut à droite (côté positif), l'axe 2 est structuré par les modalités enfant et troisième classe, ce qui signifie que les enfants et les passagers de troisième classe sont fortement associés à cet axe. En bas (côté négatif), on trouve des modalités comme survivant et adulte, proches de l’origine, ce qui indique que les adultes ne se distinguent pas vraiment sur ce second axe. Par conséquent, l'axe 2 met surtout en avant l'opposition **"enfants souvent en troisième classe"** avec le profil **"première classe"**, enfant étant très éloigné.
+
+## Visualisation sur le plan (1,3)
+
+```{r}
+fviz_mca_var(
+  res.mca, 
+  repel = TRUE, axes=c(1,3)
+)
+```
+
+Il est clair de constater que l'axe 3 oppose seconde classe à première et troisième classe car les autres modalités ne contribuent pas vraiment à la création de cet axe. Les hommes de l'équipage sont décédé tandis que les femmes et enfants de la première et seconde classe ont survécu. 
+
+## Visualisation sur le plan (1,4)
+
+```{r}
+fviz_mca_var(
+  res.mca, 
+  repel = TRUE, axes=c(1,4)
+)
+```
+
+L'axe 4 oppose un groupe très spécifique constitué des enfants et de l'équipage à la masse des passagers standards de premième et troisième classe. Nous constatons que les hommes de l'équipage sont décédés tandis que les femmes et les enfants de la première et seconde classe ont survécu. 
+
+## Visualisation sur le plan (2,3)
+
+```{r}
+fviz_mca_var(
+  res.mca, 
+  repel = TRUE, axes=c(2,3)
+)
+```
+
+Ce graphique confirme les interprétations des axes 2 et 3. D’un côté l'axe 2 sépare surtout les enfants des adultes, de l'autre l'axe 3 oppose seconde classe à première et troisième classe. Nous constatons que la première classe a survécu avec une partie de l'équipage. Par ailleurs, de nombreux enfants de la troisième classe sont décédés. 
+
+## Visualisation sur le plan (2,4)
+
+```{r}
+fviz_mca_var(
+  res.mca, 
+  repel = TRUE, axes=c(2,4)
+)
+```
+
+Nous constatons que une fois de plus que la modalité enfant est atypique.
+
+## 4.3 Scores des individus
+
+```{r}
+ind <- res.mca$ind
+head(ind$coord,10)
+```
+Au vu du grand nombre d'individus de notre base, il n'est pas intéressant de les associer aux variables (modalités). Cela ne nous servirait d'aucune utilité en termes de visualisations sur les plans factoriels et d'interprétations simultannées. Cependant, nous pourrons effectuer une séparation des groupes avec habillage. 
+
+## Séparation des groupes avec habillage sur le Plan (1,2)
+
+```{r}
+fviz_mca_ind(res.mca, 
+             axes = c(1,2),
+             geom = "point",
+             habillage = "Survie",
+             alpha.ind = 0.2
+             )
+```
+
+On observe des points rouges (décédés) et bleus (survivants) mélangés sur l’ensemble du graphique. On distingue tout de même une tendance avec davantage d’individus décédés à gauche et de survivants à droite, mais les deux premiers axes ne permettent pas de séparer nettement survivants et décédés au niveau individuel. 
+
+
+## Séparation des groupes avec habillage sur le Plan (1,2)
+
+```{r}
+fviz_mca_ind(res.mca, 
+             axes = c(1,2),
+             geom = "point",
+             habillage = "Classe",
+             alpha.ind = 0.2
+             )
+```
+
+On observe des points de couleurs différentes correspondant aux quatre classes de passagers, répartis sur tout le plan factoriel. On remarque bien quelques zones où certaines classes sont un peu plus présentes (par exemple plusieurs points de troisième classe en haut du graphique), mais globalement les deux premiers axes ne séparent pas nettement les classes : les individus des différentes classes restent largement mêlés.
+
+## **5. Synthèse des résultats**
+
+Au regard de cette étude, nous réalisons que parmi les passagers de titanic, l'analyse fait apparaître une forte opposition entre, d'un côté, les femmes des classes première et seconde, qui ont davantage survécu, et de l'autre les hommes de l'équipage, beaucoup plus souvent décédés. Les enfants constituent un groupe cas atypique car ils sont fréquemment associés à la troisième classe et se distinguent nettement des adultes. La majorité des enfants de la troisième classe n'ont pas survécu.
+
+## Vérification de nos interprétations
+
+```{r}
+with(titanic, sum(Age == "enfant" & Classe == "troisième classe" & Survie == "décédé"))
+```
+52 enfants de la troisième classe avaient trouvé la mort lors du naufrage de titanic.
+
+```{r}
+with(titanic, sum(Age == "enfant" & Classe == "seconde classe" & Survie == "décédé"))
+```
+
+```{r}
+with(titanic, sum(Age == "enfant" & Classe == "première classe" & Survie == "décédé"))
+```
+Aucun enfant des classes première et seconde n'avait trouvé la mort lors du naufrage de titanic.
+
+
+## **6. L'ACM avec  Age en quali.sup**
+
+Dans un deuxième temps, nous souhaterions effectuer l'ACM en mettant la variable Age en supérieur afin d'évaluer l'impact de son retrait sur notre analyse. Notre objectif serait de s'assurer que tous les passagers avait les mêmes les chances d'être secourus sans tenir compte de l'âge.
+
+## Application de l'ACM
+
+```{r}
+# Analyse des correspondances multiples
+res.mca2 <- MCA(titanic, graph = FALSE, quali.sup = 2)
+
+# Résultats
+res.mca2
+eig2 <- res.mca2$eig
+eig2
+```
+## Choix des composantes
+
+### Règle du coude
+
+```{r}
+fviz_eig(res.mca2, addlabels = TRUE, ylim = c(0, 60))
+```
+
+On remarque la formation d’un coude au niveau de la troisième composante (20%), ce qui nous conduit au choix des 3 premiers axes d’après la règle de Coude.
+
+### Règle de Kaiser : Choix des composantes dont les valeurs propres sont supérieures à la moyenne
+
+Cette moyenne est calculée de la manière suivante : $1/p$, avec $p = 3$.
+
+```{r}
+# Moyenne des valeurs propres
+moyenne_vp <- 1/3
+moyenne_vp
+```
+```{r}
+print(eig2, 2)
+```
+Nous constatons que la moyenne des valeurs propres est égale à $0.33$ et seulement les 3 premiers axes ont des valeurs propres supérieures cette valeur. Selon la loi de Kaiser, nous n'allons considérer que les 3 axes. 
+
+### Seuil de variance expliquée 
+
+D’après le résultat, nous retenons 3 composantes :
+
+Composante 1 : 34,9% de variance de la variabilité du nuage des individus est expliqueé.
+
+Composante 2 : 21,1% de variance de la variabilité du nuage des individus est expliquée.
+
+Composante 3 : 20% de variance de la variabilité du nuage des individus est expliquée.
+
+Ainsi 76% (soit 34,9% + 21,1% + 20%) de la variance cumulée est expliquée par les
+3 premières composantes lesquelles par conséquent expliquent quasiment la majorité de l’information engendrée par la base de données. Par conséquent d'après les 3 règles (Coude, Kaiser et le seuil de la variance expliquée), nous gardons 3 composantes. 
+
+## **7. Interprétation des axes factoriels**
+
+## 7.1. Contributions des modalités aux axes
+
+```{r}
+var2 <- res.mca2$var
+print(var2$contrib,2)   
+print(var2$coord,2)  
+print(var2$cos2,2)  
+```
+
+Dim 1 : Les modalités femme (30,70%) et survivant (22,31%) contribuent le plus à la création du premier axe. 
+
+Dim 2 : Les modalités troisème classe (49,39%) et équipage (21,37%) contribuent le plus à la création du deuxième axe, suivie de première classe (16,94%) qui contribue moyennement.
+
+Dim 3 : La modalité première classe (75%) contribue le plus à la création du troisième axe.
+
+## Qualité de représentation 
+
+Nous constatons que femme et homme sont d'une meilleure qualité de représentation par rapport aux autres sur l'axe 1. Cependant, troisième classe qui a également une meilleure qualité de représentation sur l'axe 2, suivie de la modalité équipage qui est moyennement représentée. Par contre, on constate qu'aucune modalité n'est bien représentée sur l'axe 3.
+
+## Visualisation sur le premier plan (1,2)
+
+```{r}
+fviz_mca_var(
+  res.mca2, 
+  repel = TRUE
+)
+```
+
+On constate que les modalités équipage, homme et décédé sont étroitement associées entre elles, tandis que survivant, femme, première classe et seconde classe forment un groupe opposé. Cela signifie qu’un grand nombre d'hommes de l’équipage sont décédés, alors que de nombreuses femmes des première et seconde classes ont survécu. L'axe 1 oppose donc clairement les personnes décédées de l’équipage aux survivants issus des première et seconde classes. Tandis que l'axe 2 oppose première classe et équipage à seconde classe et troisème classe. 
+
+## Visualisation sur le plan (1,3)
+
+```{r}
+fviz_mca_var(
+  res.mca2, 
+  repel = TRUE, axes=c(1,3)
+)
+```
+
+On constate aussi que plusieurs hommes de l’équipage sont décédés, alors que les femmes des première et seconde classes ont survécu. Par conséquent, l'axe 3 oppose seconde classe à première classe et troisième classe. 
+
+## Visualisation sur le plan (2,3)
+
+```{r}
+fviz_mca_var(
+  res.mca2, 
+  repel = TRUE, axes=c(2,3)
+)
+```
+
+Nous observons que l'axe 3 sépare la classe moyenne (seconde classe) des classes extrêmes (première et troisème). 
+
+## 7.2. Scores des individus
+
+```{r}
+ind2 <- res.mca2$ind
+head(ind$coord,10)
+```
+## Séparation des groupes avec habillage sur le Plan (1,2)
+
+```{r}
+fviz_mca_ind(res.mca2, 
+             axes = c(1,2),
+             geom = "point",
+             habillage = "Survie",
+             alpha.ind = 0.2
+             )
+```
+
+On observe des points décédés et survivants dispersés sur tout le plan factoriel. Comme précédemment, on devine une légère tendance avec davantage de survivants dans la partie droite du graphique, mais les axes 1 et 2 ne permettent pas de distinguer nettement les survivants des décédés.
+
+## Séparation des groupes avec habillage sur le Plan (1,2)
+
+```{r}
+fviz_mca_ind(res.mca2, 
+             axes = c(1,2),
+             geom = "point",
+             habillage = "Classe",
+             alpha.ind = 0.2
+             )
+```
+
+On voit des points de couleurs différentes correspondant aux quatre classes répartis sur tout le plan factoriel. Comme pour le graphique précédent, quelques regroupements locaux apparaissent, mais les deux premiers axes ne séparent pas nettement les classes. Les passagers des différentes classes restent largement mélangés dans ce plan.
+
+
+En mettant l'âge en variable supplémentaire, nous avons empêché la modalité  "Enfant" d'influencer la construction des axes.
+
+## **8. Conclusion générale** 
+
+Pour survivre, il ne suffisait pas d'être de la première classe ou d'être une femme ou un enfant ; c'était une combinaison de plusieurs facteurs. La variable âge a joué un rôle important dans cette étude. Elle a permis de sauver des enfants qui, à cause de leur classe sociale inférieure (troisième classe pour la plupart), auraient normalement eu très peu de chances de s'en sortir. Cependant, les enfants n'ont pas été priorisés comme ça se devrait.
